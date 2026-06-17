@@ -1,0 +1,83 @@
+# Author: PROG7311-2026-EMWVL (Lecturer Repository)
+# URL: https://github.com/PROG7311-2026-EMWVL/Hello-PROG7311/tree/main/13%20-%20CI%20Pipeline
+# Date: [n.d]
+# Date Accessed: 16 May 2026
+
+services:
+  sql-server-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sql-server-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - techmove_db_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/1433'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  db-init:
+    image: mcr.microsoft.com/mssql-tools
+    container_name: db-init
+    depends_on:
+      sql-server-db:
+        condition: service_healthy
+    volumes:
+      - ./db/init.sql:/init.sql
+    entrypoint: >
+      /bin/bash -c "
+      /opt/mssql-tools/bin/sqlcmd -S sql-server-db -U sa -P ${SA_PASSWORD} -Q 'SELECT 1' ;
+      until [ $$? -eq 0 ]; do
+        echo 'Waiting for SQL Server...';
+        sleep 2;
+        /opt/mssql-tools/bin/sqlcmd -S sql-server-db -U sa -P ${SA_PASSWORD} -Q 'SELECT 1' ;
+      done;
+      echo 'Running init.sql...';
+      /opt/mssql-tools/bin/sqlcmd -S sql-server-db -U sa -P ${SA_PASSWORD} -i /init.sql;
+      echo 'Database initialized';
+      "
+    restart: "no"
+
+  glms-backend-api:
+    build:
+      context: ./TechMoveAPI
+      dockerfile: Dockerfile
+    container_name: glms-backend-api
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      FirebaseTechMove: "${FirebaseTechMove}"
+      TechMoveJwtKey: "${TechMoveJwtKey}"
+      TechMoveDB: "Server=sql-server-db,1433;Database=TechMoveDB;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
+    ports:
+      - "8081:8080"
+
+  glms-frontend-web:
+    build:
+      context: ./TechMoveClient
+      dockerfile: Dockerfile
+    container_name: glms-frontend-web
+    depends_on:
+      - glms-backend-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ApiSettings__BaseUrl: "http://glms-backend-api:8080"
+      ApiSettings__ExchangeRateApiKey: "${EXCHANGE_RATE_API_KEY}"
+      Supabase__Url: "${SUPABASE_URL}"
+      Supabase__Key: "${SUPABASE_KEY}"
+      Supabase__Bucket: "${SUPABASE_BUCKET}"
+    ports:
+      - "8082:8080"
+    volumes:
+      - client-dataprotection-keys:/keys
+
+volumes:
+  techmove_db_data:
+  client-dataprotection-keys:

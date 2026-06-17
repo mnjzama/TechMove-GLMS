@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test:api": "newman run tests/newman/techmove-api.postman_collection.json -e tests/newman/techmove-ci.postman_environment.json",
+    "test:playwright": "playwright test --config=tests/playwright/playwright.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "newman": "^6.2.2"
+  }
+}

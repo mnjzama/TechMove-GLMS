@@ -1,0 +1,29 @@
+name: Build and Test (TechMove)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore TechMove.sln
+
+    - name: Build Solution
+      run: dotnet build TechMove.sln --configuration Release --no-restore
+
+    - name: Run Tests
+      run: dotnet test TechMove.sln --configuration Release --no-build --verbosity normal

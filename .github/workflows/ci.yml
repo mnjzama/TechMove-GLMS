@@ -1,0 +1,221 @@
+# Author: PROG7311-2026-EMWVL (Lecturer Repository)
+# URL: https://github.com/PROG7311-2026-EMWVL/Hello-PROG7311/tree/main/13%20-%20CI%20Pipeline
+# Date: [n.d]
+# Date Accessed: 16 May 2026
+
+# Author: Abdullah Hassan
+# URL: https://medium.com/@abdullahhassancode/mastering-docker-core-concepts-and-best-practices-for-modern-apps-bd278d8aa311
+# Date: 29 September 2025
+# Date Accessed: 6 June 2026
+
+# Author: LabEx Tutorials
+# URL: https://labex.io/tutorials/docker-using-the-docker-compose-down-command-effectively-400128
+# Date: Date: [n.d]
+# Date Accessed: 6 June 2026
+
+# Author: ChatGPT (OpenAI)
+# URL: https://chatgpt.com/share/6a25790c-0fd4-83ea-ae55-47b21da5f64a
+# Date Accessed: 06 June 2026
+# Description: Guidance on Docker Compose pipeline structure and placement of environment reset commands within my CI workflow.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: "Skip image build and use existing GHCR images"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_build == false }}
+
+    outputs:
+      owner_lc: ${{ steps.vars.outputs.owner_lc }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lowercase owner
+        id: vars
+        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push DB
+        uses: docker/build-push-action@v6
+        with:
+          context: ./db
+          file: ./db/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.vars.outputs.owner_lc }}/glms-db:latest
+
+      - name: Build and push API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./TechMoveAPI
+          file: ./TechMoveAPI/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.vars.outputs.owner_lc }}/glms-backend-api:latest
+
+      - name: Build and push Client
+        uses: docker/build-push-action@v6
+        with:
+          context: ./TechMoveClient
+          file: ./TechMoveClient/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.vars.outputs.owner_lc }}/glms-frontend-web:latest
+
+  run-stack:
+    runs-on: ubuntu-latest
+    needs: publish
+
+    if: ${{ always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
+    
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      IMAGE_TAG: latest
+      SA_PASSWORD: ${{ secrets.SA_PASSWORD }}
+      FirebaseTechMove: ${{ secrets.FirebaseTechMove }}
+      TechMoveJwtKey: ${{ secrets.TechMoveJwtKey }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lowercase owner
+        run: echo "GITHUB_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull images
+        run: docker compose -f compose.ci.yml pull
+
+      - name: Hard reset Docker environment
+        run: |
+          docker compose -f compose.ci.yml down -v --remove-orphans
+          docker system prune -af 
+
+      - name: Start stack
+        run: docker compose -f compose.ci.yml up -d
+
+      - name: Show running containers
+        run: docker ps
+
+      - name: Wait for database
+        run: |
+          for i in {1..36}; do
+            if docker exec sql-server-db /bin/bash -c "sqlcmd -S localhost -U sa -P '$SA_PASSWORD' -C -Q 'SELECT 1'" >/dev/null 2>&1; then
+              echo "Database is ready"
+              exit 0
+            fi
+            echo "Waiting for database..."
+            sleep 5
+          done
+          echo "Database did not become ready"
+          docker logs sql-server-db || true
+          exit 1
+
+      - name: Wait for API
+        run: |
+          for i in {1..36}; do
+            if curl -fsS http://localhost:8081/api/health >/dev/null 2>&1; then
+              echo "API is ready"
+              exit 0
+            fi
+            echo "Waiting for API..."
+            sleep 5
+          done
+          echo "API did not respond"
+          docker logs glms-backend-api || true
+          exit 1
+
+      - name: Wait for client
+        run: |
+          for i in {1..36}; do
+            if curl -fsS http://localhost:8082/health >/dev/null 2>&1; then
+              echo "Client is ready"
+              exit 0
+            fi
+            echo "Waiting for client..."
+            sleep 5
+          done
+          echo "Client did not respond"
+          docker logs glms-frontend-web || true
+          exit 1
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Newman API tests
+        run: npm run test:api -- --env-var baseUrl=http://localhost:8081
+
+      - name: Run Playwright integration tests
+        run: npm run test:playwright
+        env:
+          CLIENT_BASE_URL: http://localhost:8082
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Install Newman
+        run: npm ci
+
+      - name: Run Newman API tests
+        run: npm run test:api -- --env-var baseUrl=http://localhost:8081
+
+      - name: Show logs if failure
+        if: failure()
+        run: |
+          echo "===== DB LOGS ====="
+          docker logs sql-server-db || true
+          echo "===== API LOGS ====="
+          docker logs glms-backend-api || true
+          echo "===== CLIENT LOGS ====="
+          docker logs glms-frontend-web || true
+
+      - name: Stop stack
+        if: always()
+        run: docker compose -f compose.ci.yml down -v

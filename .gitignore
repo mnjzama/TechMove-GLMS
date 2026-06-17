@@ -1,0 +1,11 @@
+bin/
+obj/
+.env
+node_modules/
+.vs/
+*.user
+*.suo
+*.log
+TestResults/
+playwright-report/
+test-results/

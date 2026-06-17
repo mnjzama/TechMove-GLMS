@@ -1,0 +1,164 @@
+@model IEnumerable<TechMoveClient.ViewModels.ContractIndexViewModel>
+
+<div class="container mt-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Contracts Management</h2>
+
+        <div class="d-flex gap-2">
+            <a href="/Contract/Create" class="btn btn-primary btn-sm">
+                + Create Contract
+            </a>
+
+            <a href="/ServiceRequest/Index" class="btn btn-dark btn-sm">
+                View Service Requests
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+
+            <form method="get" class="row g-2">
+
+                <div class="col-md-3">
+                    <input type="date" name="startDate" class="form-control" placeholder="Start Date" />
+                </div>
+
+                <div class="col-md-3">
+                    <input type="date" name="endDate" class="form-control" placeholder="End Date" />
+                </div>
+
+                <div class="col-md-3">
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Active">Active</option>
+                        <option value="OnHold">On Hold</option>
+                        <option value="Expired">Expired</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        Filter
+                    </button>
+
+                    <a href="/Contract/Index" class="btn btn-outline-secondary w-100">
+                        Reset
+                    </a>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+
+            <table class="table table-hover table-bordered align-middle mb-0">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Client</th>
+                        <th>Service Level</th>
+                        <th>Status</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Agreement</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td>@c.ClientName</td>
+
+                        <td>@c.ServiceLevel</td>
+
+                        <td>
+                            @if (c.Status == TechMoveClient.Models.ContractStatus.Active)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else if (c.Status == TechMoveClient.Models.ContractStatus.Draft)
+                            {
+                                <span class="badge bg-warning text-dark">Draft</span>
+                            }
+                            else if (c.Status == TechMoveClient.Models.ContractStatus.OnHold)
+                            {
+                                <span class="badge bg-info text-dark">On Hold</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Expired</span>
+                            }
+
+                            <form asp-action="UpdateStatus" method="post" class="mt-2">
+                                <input type="hidden" name="id" value="@c.ContractId" />
+
+                                <select name="status" class="form-select form-select-sm"
+                                        onchange="this.form.submit()">
+
+                                    <option value="Draft" selected="@(c.Status == TechMoveClient.Models.ContractStatus.Draft)">Draft</option>
+
+                                    <option value="OnHold" selected="@(c.Status == TechMoveClient.Models.ContractStatus.OnHold)">On Hold</option>
+
+                                    <option value="Active" selected="@(c.Status == TechMoveClient.Models.ContractStatus.Active)">Active</option>
+
+                                    <option value="Expired" selected="@(c.Status == TechMoveClient.Models.ContractStatus.Expired)">Expired</option>
+
+                                </select>
+                            </form>
+                        </td>
+
+                        <td>@c.StartDate.ToShortDateString()</td>
+                        <td>@c.EndDate.ToShortDateString()</td>
+
+                        <td>
+                            @if (!string.IsNullOrEmpty(c.AgreementFilePath))
+                            {
+                                <a href="@Url.Action("DownloadAgreement", "Contract", new { path = c.AgreementFilePath })"
+                                    class="btn btn-sm btn-success">Download / View
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No file</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (c.Status == ContractStatus.Draft)
+                            {
+                                <form asp-action="Delete" method="post" style="display:inline;">
+                                    <input type="hidden" name="id" value="@c.ContractId" />
+
+                                    <button type="submit"
+                                            onclick="return confirm('Are you sure you want to delete this Draft contract?');"
+                                            class="btn btn-sm btn-danger">
+                                        Delete
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span style="color:gray; font-size:12px;">Not deletable</span>
+                            }
+
+                        </td>
+                    </tr>
+                }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+
+</div>

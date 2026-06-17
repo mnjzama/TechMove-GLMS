@@ -1,0 +1,67 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="container mt-4">
+    <div class="text-center mb-4">
+        <h1 class="fw-bold">TechMove Logistics</h1>
+        <p class="text-muted fs-5">
+            Smart logistics. Seamless contracts. Efficient delivery solutions.
+        </p>
+    </div>
+
+    <div class="mb-5">
+        <img src="~/images/logistics.jpg"
+             class="img-fluid rounded shadow"
+             style="width:100%; max-height:400px; object-fit:cover;" />
+    </div>
+
+    <div class="row">
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Client Management</h5>
+                    <p class="card-text">
+                        Manage client information including contact details and regional data.
+                        Easily create, edit, and maintain client records within the system.
+                    </p>
+                </div>
+                <div class="card-footer bg-white border-0">
+                    <a href="/Client" class="btn btn-primary w-100">Go to Clients</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Contract Management</h5>
+                    <p class="card-text">
+                        Create and manage contracts using structured workflows.
+                        Upload signed agreements and track contract status efficiently.
+                    </p>
+                </div>
+                <div class="card-footer bg-white border-0">
+                    <a href="/Contract" class="btn btn-outline-secondary w-100">View Contracts</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Service Requests</h5>
+                    <p class="card-text">
+                        Submit and track service requests linked to contracts.
+                        Monitor request status and automate notifications in real time.
+                    </p>
+                </div>
+                <div class="card-footer bg-white border-0">
+                    <a href="/ServiceRequest" class="btn btn-success w-100">Manage Requests</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

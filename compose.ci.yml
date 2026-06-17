@@ -1,0 +1,44 @@
+# Author: PROG7311-2026-EMWVL (Lecturer Repository)
+# URL: https://github.com/PROG7311-2026-EMWVL/Hello-PROG7311/tree/main/13%20-%20CI%20Pipeline
+# Date: [n.d]
+# Date Accessed: 16 May 2026
+
+services:
+  sql-server-db:
+    image: ghcr.io/${GITHUB_OWNER_LC}/glms-db:${IMAGE_TAG}
+    container_name: sql-server-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+    ports:
+      - "1433:1433"
+
+  glms-backend-api:
+    image: ghcr.io/${GITHUB_OWNER_LC}/glms-backend-api:${IMAGE_TAG}
+    container_name: glms-backend-api
+    depends_on:
+      - sql-server-db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      FirebaseTechMove: "${FirebaseTechMove}"
+      TechMoveJwtKey: "${TechMoveJwtKey}"
+      TechMoveDB: "Server=sql-server-db,1433;Database=TechMoveDB;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
+    ports:
+      - "8081:8080"
+
+  glms-frontend-web:
+    image: ghcr.io/${GITHUB_OWNER_LC}/glms-frontend-web:${IMAGE_TAG}
+    container_name: glms-frontend-web
+    depends_on:
+      - glms-backend-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ApiSettings__BaseUrl: "http://glms-backend-api:8080"
+      ApiSettings__ExchangeRateApiKey: "${EXCHANGE_RATE_API_KEY}"
+    ports:
+      - "8082:8080"
+    volumes:
+      - client-dataprotection-keys:/keys
+
+volumes:
+  client-dataprotection-keys:
