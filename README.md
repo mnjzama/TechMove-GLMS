@@ -451,15 +451,17 @@ package.json
 
 ## 🎥 System Demonstration
 
-Full system walkthrough available:
+### Part 2
+- [https://youtu.be/8g53nhqRIbs](https://youtu.be/8g53nhqRIbs)
 
-[https://youtu.be/gG51XCBA4og](https://youtu.be/gG51XCBA4og)
+### Final Demonstration:
+- [https://youtu.be/gG51XCBA4og](https://youtu.be/gG51XCBA4og)
 
 ---
 
 ## 👤 Author
 
-* Developed by: Mandlenkosi Njabulo Zama (ST10450036)
+* Developed by: Mandlenkosi Njabulo Zama
 * Module: Programming 7311 / PROG7311
 * Project: TechMove Global Logistics Management System
 
